@@ -39,7 +39,7 @@ class GameModel {
           score += val;
           row[j] = val;
           row[j + 1] = null;
-          merged[j] = true; // ✅ Mark as merged so it can't merge again
+          merged[j] = true; // 🔰 Mark as merged so it can't merge again
         }
       }
 
@@ -54,11 +54,11 @@ class GameModel {
     }
 
     if (moved) addRandomTile();
-    if (score > bestScore) bestScore = score;
+    // if (score > bestScore) bestScore = score;
     return moved;
   }
 
-  // ✅ RIGHT: reverse each row, moveLeft, reverse back
+  // 🔰 RIGHT: reverse each row, moveLeft, reverse back
   bool moveRight() {
     _reverseRows();
     bool moved = moveLeft();
@@ -66,7 +66,7 @@ class GameModel {
     return moved;
   }
 
-  // ✅ UP: transpose, moveLeft, transpose back
+  // 🔰 UP: transpose, moveLeft, transpose back
   bool moveUp() {
     _transpose();
     bool moved = moveLeft();
@@ -74,7 +74,7 @@ class GameModel {
     return moved;
   }
 
-  // ✅ DOWN: transpose, moveRight (= reverse+moveLeft+reverse), transpose back
+  // 🔰 DOWN: transpose, moveRight (= reverse+moveLeft+reverse), transpose back
   bool moveDown() {
     _transpose();
     bool moved = moveRight();
@@ -133,11 +133,5 @@ class GameModel {
       }
     }
     return true;
-  }
-
-    String gridToString() {
-    return grid
-        .map((row) => row.map((e) => e?.toString() ?? '.').join('|'))
-        .join('\n');
   }
 }
