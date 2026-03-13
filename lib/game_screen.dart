@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'game_model.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:ui';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -12,6 +13,7 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late GameModel gameModel;
   bool _didShowWelcome = false;
+  bool _isMoving = false;
 
 @override
 void initState() {
@@ -35,8 +37,8 @@ Color _getTileColor(int value) {
     case 4: return const Color(0xFF51577c);
     case 8: return const Color(0xFF764a7d);
     case 16: return const Color(0xFF512DA8);
-    case 32: return const Color(0xFF4527A0);
-    case 64: return const Color(0xFF311B92);
+    case 32: return const Color(0xFF7338B7);
+    case 64: return const Color(0xFF4F2E54);
     case 128: return const Color(0xFF7b1fa2);
     case 256: return const Color(0xFF4a148c);
     case 512: return const Color(0xFF880e4f);
@@ -156,29 +158,45 @@ Color _getTileColor(int value) {
           ConstrainedBox(
             constraints: const BoxConstraints(
               maxWidth: 400,
-              maxHeight: 400,
+              maxHeight: 700,
             ),
             child: AspectRatio(
               aspectRatio: 1.0, // square
-              // The grid container
+
+              // =========== The grid container ======================
               child: GestureDetector(
-                onPanUpdate: (details){
-                  if (details.delta.dx.abs() > details.delta.dy.abs()) {
-                    // Horizontal swipe
-                    if (details.delta.dx > 30) {
-                      if (gameModel.moveRight()) setState(() {});
-                    } else if (details.delta.dx < -30) {
-                      if (gameModel.moveLeft()) setState(() {});
+                onPanEnd: (DragEndDetails details) async {
+                    // BLOCK if already moving
+                    if (_isMoving) return;
+                    
+                    double dx = details.velocity.pixelsPerSecond.dx;
+                    double dy = details.velocity.pixelsPerSecond.dy;
+                    
+                    if (dx.abs() < 100 && dy.abs() < 100) return;
+                    
+                    _isMoving = true;  // LOCK
+                    
+                    // Do ONE move
+                    if (dx.abs() > dy.abs()) {
+                      if (dx > 0) {
+                        gameModel.moveRight();
+                      } else {
+                        gameModel.moveLeft();
+                      }
+                    } else {
+                      if (dy > 0) {
+                        gameModel.moveDown();
+                      } else {
+                        gameModel.moveUp();
+                      }
                     }
-                  } else {
-                    // Vertical swipe
-                    if (details.delta.dy > 30) {
-                      if (gameModel.moveDown()) setState(() {});
-                    } else if (details.delta.dy < -30) {
-                      if (gameModel.moveUp()) setState(() {});
-                    }
-                  }
-                },
+                    
+                    setState(() {});
+                    
+                    // Unlock after 300ms (fast!)
+                    await Future.delayed(Duration(milliseconds: 300));
+                    _isMoving = false;
+                  },                
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
@@ -220,7 +238,7 @@ Color _getTileColor(int value) {
             ),
           ),
           
-          const SizedBox(height: 10),
+          const SizedBox(height: 30),
           
           // Restart button
           ElevatedButton(

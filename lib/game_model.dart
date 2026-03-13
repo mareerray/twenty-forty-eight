@@ -18,64 +18,79 @@ class GameModel {
     score = 0;
     addRandomTile();
     addRandomTile();
+    addRandomTile();
   }
 
-  // Swipe left (same for right/up/down by rotating logic later)
   bool moveLeft() {
     bool moved = false;
-    
-    for (int i = 0; i < gridSize; i++) { // each row
-      List<int?> row = grid[i];
-      
-      // Remove nulls and pack to left: [2, null, 2, null] → [2, 2, null, null]
-      List<int?> packed = [];
-      for (int? val in row) {
-        if (val != null) packed.add(val);
+
+    for (int i = 0; i < gridSize; i++) {
+      // Step 1: Compress (push all non-null to the left)
+      List<int?> row = grid[i].where((v) => v != null).toList();
+      while (row.length < gridSize) {
+        row.add(null);
       }
-      
-      // Merge same numbers
-      for (int j = 0; j < packed.length - 1; j++) {
-        if (packed[j] != null && packed[j] == packed[j + 1]) {
-          int merged = packed[j]! * 2;
-          score += merged;
-          packed[j] = merged;
-          packed[j + 1] = null;
-          moved = true;
+
+      // Step 2: Merge once — each tile merges at most once
+      List<bool> merged = List.filled(gridSize, false);
+      for (int j = 0; j < gridSize - 1; j++) {
+        if (row[j] != null && row[j] == row[j + 1] && !merged[j]) {
+          int val = row[j]! * 2;
+          score += val;
+          row[j] = val;
+          row[j + 1] = null;
+          merged[j] = true; // ✅ Mark as merged so it can't merge again
         }
       }
-      
-      // Pack again after merge
-      List<int?> newPacked = [];
-      for (int? val in packed) {
-        if (val != null) newPacked.add(val);
+
+      // Step 3: Compress again (fill gaps left by merging)
+      List<int?> newRow = row.where((v) => v != null).toList();
+      while (newRow.length < gridSize) {
+        newRow.add(null);
       }
-      while (newPacked.length < gridSize) {
-        newPacked.add(null);
-      }
-      
-      // Update row if changed
-      if (row.join(',') != newPacked.join(',')) {
-        grid[i] = newPacked;
-        moved = true;
-      }
+      // Check if the row actually changed
+      if (grid[i].join() != newRow.join()) moved = true;
+      grid[i] = newRow;
     }
-    
-    if (moved) {
-      addRandomTile();
-      if (score > bestScore) bestScore = score;
-    }
-    
+
+    if (moved) addRandomTile();
+    if (score > bestScore) bestScore = score;
     return moved;
   }
 
-  // Add more directions later, but test left first
-  bool moveRight() => _rotateClockwise() && moveLeft() && _rotateCounterClockwise();
-  bool moveUp() => _rotateClockwiseTwice() && moveLeft() && _rotateCounterClockwiseTwice();
-  bool moveDown() => _rotateClockwise() && moveLeft() && _rotateClockwise();
+  // ✅ RIGHT: reverse each row, moveLeft, reverse back
+  bool moveRight() {
+    _reverseRows();
+    bool moved = moveLeft();
+    _reverseRows();
+    return moved;
+  }
 
-  // Rotation helpers (clever trick for all directions)
-  bool _rotateClockwise() {
-    // Transpose + reverse each row
+  // ✅ UP: transpose, moveLeft, transpose back
+  bool moveUp() {
+    _transpose();
+    bool moved = moveLeft();
+    _transpose();
+    return moved;
+  }
+
+  // ✅ DOWN: transpose, moveRight (= reverse+moveLeft+reverse), transpose back
+  bool moveDown() {
+    _transpose();
+    bool moved = moveRight();
+    _transpose();
+    return moved;
+  }
+
+  // Flip each row horizontally: [1,2,3,4] → [4,3,2,1]
+  void _reverseRows() {
+    for (int i = 0; i < gridSize; i++) {
+      grid[i] = grid[i].reversed.toList();
+    }
+  }
+
+  // Swap rows and columns: grid[i][j] ↔ grid[j][i]
+  void _transpose() {
     for (int i = 0; i < gridSize; i++) {
       for (int j = i + 1; j < gridSize; j++) {
         int? temp = grid[i][j];
@@ -83,30 +98,10 @@ class GameModel {
         grid[j][i] = temp;
       }
     }
-    for (int i = 0; i < gridSize; i++) {
-      grid[i] = grid[i].reversed.toList();
-    }
-    return true;
   }
-
-  bool _rotateCounterClockwise() {
-    for (int i = 0; i < gridSize; i++) {
-      grid[i] = grid[i].reversed.toList();
-    }
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = i + 1; j < gridSize; j++) {
-        int? temp = grid[i][j];
-        grid[i][j] = grid[j][i];
-        grid[j][i] = temp;
-      }
-    }
-    return true;
-  }
-
-  bool _rotateClockwiseTwice() => _rotateClockwise() && _rotateClockwise();
-  bool _rotateCounterClockwiseTwice() => _rotateCounterClockwise() && _rotateCounterClockwise();
 
   void addRandomTile() {
+    print('Adding ONE new tile...');
     List<int> emptyIndices = [];
     for (int i = 0; i < gridSize * gridSize; i++) {
       int row = i ~/ gridSize;
@@ -117,7 +112,7 @@ class GameModel {
       int randomIndex = emptyIndices[Random().nextInt(emptyIndices.length)];
       int row = randomIndex ~/ gridSize;
       int col = randomIndex % gridSize;
-      grid[row][col] = Random().nextBool() ? 2 : 4;
+      grid[row][col] = (Random().nextDouble() < 0.9) ? 2 : 4; // New tiles are 90% 2's and 10% 4's
     }
   }
 
@@ -138,5 +133,11 @@ class GameModel {
       }
     }
     return true;
+  }
+
+    String gridToString() {
+    return grid
+        .map((row) => row.map((e) => e?.toString() ?? '.').join('|'))
+        .join('\n');
   }
 }
