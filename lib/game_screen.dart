@@ -158,7 +158,7 @@ class GameScreen extends StatefulWidget {
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.primary)),
           content: Text(
-            'Your score: ${gameModel.score}\nBest score: ${gameModel.bestScore}',
+            ' 𓆩✧𓆪 Your score: ${gameModel.score}\n 𓆩♕𓆪 Best score: ${gameModel.bestScore}',
             style: GoogleFonts.figtree(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           actions: [
@@ -209,7 +209,7 @@ class GameScreen extends StatefulWidget {
             children: [
               Column(
                 children: [
-                  Text('🔰', style: GoogleFonts.figtree(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)), 
+                  Text('𓆩✧𓆪', style: GoogleFonts.figtree(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)), 
                   Text(gameModel.score.toString(), style: GoogleFonts.figtree(fontSize: 20, fontWeight: FontWeight.bold))
                 ]
               ),
