@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'game_model.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'audio_service.dart';
+import 'game_model.dart';
+import 'tile_data.dart';
+import 'game_state.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -10,13 +13,15 @@ class GameScreen extends StatefulWidget {
   }
 
   class _GameScreenState extends State<GameScreen> {
+    final AudioService _audio = AudioService();
+
     late GameModel gameModel;
     bool _didShowWelcome = false;
-    bool _isMoving = false;
 
   @override
   void initState() {
     super.initState();
+    // _audio.init(); // 🔰 prepare audio assets
     gameModel = GameModel();
 
     // 🔰 Load saved best score and WAIT for it before showing anything
@@ -34,62 +39,72 @@ class GameScreen extends StatefulWidget {
     });
   }
 
-  Color _getTileColor(int value) {
-    switch (value) {
-      case 2: return const Color(0xFF8c80a2);
-      case 4: return const Color(0xFF51577c);
-      case 8: return const Color(0xFF764a7d);
-      case 16: return const Color(0xFF512DA8);
-      case 32: return const Color(0xFF7338B7);
-      case 64: return const Color(0xFF4F2E54);
-      case 128: return const Color(0xFF7b1fa2);
-      case 256: return const Color(0xFF4a148c);
-      case 512: return const Color(0xFF880e4f);
-      case 1024: return const Color(0xFFad1457);
-      case 2048: return const Color(0xFFc2185b);
-      default: return const Color(0xFFCCCCCC);
-      // #5d4a7d, #6a7d4a, #764a7d, #4a517d
-    }
-  }
-
-  // ============ Extracted swipe handler — used by both grid and swipe pad ====================
+  // ============ Swipe handler — Also handling Game State ====================
   void _handleSwipe(DragEndDetails details) async {
-    if (_isMoving) return;
+    // 🔰 Only accept swipes when actually playing
+    if (gameModel.state != GameState.playing) return;
 
     double dx = details.velocity.pixelsPerSecond.dx;
     double dy = details.velocity.pixelsPerSecond.dy;
 
     if (dx.abs() < 100 && dy.abs() < 100) return;
 
-    _isMoving = true;
+    // ── Phase 1: MOVING ──────────────────────────
+    gameModel.state = GameState.moving;
 
-    // 🔰 Step 1: Make the move based on swipe direction
+    bool moved = false;
     if (dx.abs() > dy.abs()) {
-      if (dx > 0) {
-        gameModel.moveRight();
-      } else {
-        gameModel.moveLeft();
-      }
+      moved = dx > 0
+          ? gameModel.moveRight(addTile: false)
+          : gameModel.moveLeft(addTile: false);
     } else {
-      if (dy > 0) {
-        gameModel.moveDown();
-      } else {
-        gameModel.moveUp();
-      }
-    }
-    // 🔰 Step 2: ALWAYS check game over after ANY move direction
-    if (gameModel.gameOver) {
-      if (gameModel.score > gameModel.bestScore) {
-        gameModel.bestScore = gameModel.score; // 🔰 update best score on game over
-        await gameModel.saveBestScore(); // 🔰 Save to device when new best is set!
-      }
-      _showGameOverDialog(); 
+      moved = dy > 0
+          ? gameModel.moveDown(addTile: false)
+          : gameModel.moveUp(addTile: false);
     }
 
+    setState(() {}); // tiles slide
+    await Future.delayed(const Duration(milliseconds: 150)); // wait for slide
+
+    if (!moved) {
+      gameModel.state = GameState.playing; // nothing moved, go back
+      return;
+    }
+
+    // // 🔰 Play merge sound if tiles collided during the slide
+    // if (gameModel.didMerge) _audio.playMerge();
+
+    // ── Phase 2: SPAWNING ────────────────────────
+    gameModel.state = GameState.spawning;
+    gameModel.addRandomTile();
+    setState(() {}); // new tile appears
+    await Future.delayed(const Duration(milliseconds: 150)); // wait for pop-in
+
+    // Check if player just hit 2048
+    bool hasWon = gameModel.grid.any(
+      (row) => row.any((cell) => cell?['value'] == 2048)
+    );
+    // 🔰 Play win sound if 2048 tile is on the board (even if game continues)
+    if (hasWon) _audio.playWin();
+
+    // ── Phase 3: CHECK GAME OVER ─────────────────
+    if (gameModel.gameOver) {
+      gameModel.state = GameState.gameOver;
+      await _audio.playGameOver(); // 🔰 sound first, THEN dialog
+
+      if (gameModel.score > gameModel.bestScore) {
+        gameModel.bestScore = gameModel.score;
+        await gameModel.saveBestScore();
+      }
+      _showGameOverDialog();
+      return;
+    }
+
+    // ── Phase 4: Back to PLAYING ─────────────────
+    gameModel.state = GameState.playing;
     setState(() {});
-    await Future.delayed(const Duration(milliseconds: 300));
-    _isMoving = false;
   }
+
 
   // ============= Show welcome dialog on first load ====================
   void _showWelcomeDialog() {
@@ -138,6 +153,7 @@ class GameScreen extends StatefulWidget {
               onPressed: () {
                 Navigator.of(context).pop(); // close dialog
                 gameModel.startGame();
+                _audio.playBgMusic(); // 🔰 music starts
                 setState(() {});
               },
               child: Text('Let\'s play!',
@@ -176,6 +192,7 @@ class GameScreen extends StatefulWidget {
               onPressed: () {
                 Navigator.of(context).pop();
                 gameModel.startGame();
+                _audio.playBgMusic(); // 🔰 music restarts
                 setState(() {});
               },
               child: Text('Play Again',
@@ -186,6 +203,13 @@ class GameScreen extends StatefulWidget {
       },
     );
   }
+
+  @override
+  void dispose() {
+    _audio.dispose(); // 🔰 clean up players
+    super.dispose();
+  }
+
 
   // ================= BUILD UI ===========================
   @override
@@ -237,11 +261,12 @@ class GameScreen extends StatefulWidget {
                     child: IconButton(
                       onPressed: () {
                         gameModel.startGame();
+                        _audio.playBgMusic(); // 🔰 music restarts
                         setState(() {});
                       },
                       icon: const Icon(Icons.replay_circle_filled, color: Color(0xFF6f7b5a)),
                       iconSize: 38,
-                      tooltip: 'Restart',
+                      tooltip: 'Replay Game',
                     ),
                   ),
                 ],
@@ -274,42 +299,67 @@ class GameScreen extends StatefulWidget {
                   // ── Grid (square) ──────────────────────────────
                   AspectRatio(
                     aspectRatio: 1.0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha:0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: GridView.builder(
-                        padding: const EdgeInsets.all(8),
-                        physics: const NeverScrollableScrollPhysics(), // disable scrolling
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 4,
-                          crossAxisSpacing: 4,
-                          mainAxisSpacing: 4,
-                        ),
-                        itemCount: 16,
-                        itemBuilder: (context, index) {
-                          int row = index ~/ 4;
-                          int col = index % 4;
-                          int? value = gameModel.grid[row][col];
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: value == null ? Colors.grey[200] : _getTileColor(value),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Center(
-                              child: Text(
-                                value?.toString() ?? '',
-                                style: GoogleFonts.figtree(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        double size = constraints.maxWidth;
+                        double padding = 8.0;
+                        double gap = 4.0;
+                        double cellSize = (size - padding * 2 - gap * 3) / 4;
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Stack(
+                            children: [
+                              // 🔰 Background empty cells (always visible)
+                              for (int r = 0; r < 4; r++)
+                                for (int c = 0; c < 4; c++)
+                                  Positioned(
+                                    left: padding + c * (cellSize + gap),
+                                    top: padding + r * (cellSize + gap),
+                                    width: cellSize,
+                                    height: cellSize,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[200],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                  ),
+
+                              // 🔰 Animated tiles on top
+                              for (var tile in gameModel.getTiles())
+                                AnimatedPositioned(
+                                  key: ValueKey(tile['id']), // 🔰 use the stable ID for the key
+                                  duration: const Duration(milliseconds: 500),
+                                  curve: Curves.easeInOut,
+                                  left: padding + tile['col'] * (cellSize + gap),
+                                  top: padding + tile['row'] * (cellSize + gap),
+                                  width: cellSize,
+                                  height: cellSize,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: getTileColor(tile['value']),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        tile['value'].toString(),
+                                        style: GoogleFonts.figtree(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
               

@@ -1,14 +1,23 @@
 import 'dart:math';
+import 'game_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // core game logic: swipe moves, tile sliding, merging, scoring, and new tiles.
 // Grid is a 4x4 box of empty spots (null). startGame() clears it and adds 2 random tiles (2 or 4).
 
 class GameModel {
   static const int gridSize = 4;
-  List<List<int?>> grid = List.generate(gridSize, (_) => List<int?>.filled(gridSize, null));
+  GameState state = GameState.idle; // 🔰 starts idle
 
+  // Replace grid type — now stores maps with value AND id
+  List<List<Map<String, dynamic>?>> grid = List.generate(
+    gridSize, (_) => List<Map<String, dynamic>?>.filled(gridSize, null)
+  );
+
+  int _nextId = 0; // 🔰 global counter — every new tile gets a unique number
+  
   int score = 0;
   int bestScore = 0;
+  // bool didMerge = false; // 🔰 track if a merge happened during the last move
 
   GameModel() {
     startGame();
@@ -28,20 +37,40 @@ class GameModel {
     print('✅ Saved best score: $bestScore');
   }
 
+  List<Map<String, dynamic>> getTiles() {
+    List<Map<String, dynamic>> tiles = [];
+    for (int r = 0; r < gridSize; r++) {
+      for (int c = 0; c < gridSize; c++) {
+        if (grid[r][c] != null) {
+          tiles.add({
+            'value': grid[r][c]!['value'], 
+            'id': grid[r][c]!['id'],   // 🔰 pass the stable ID through
+            'row': r, 
+            'col': c
+          });
+        }
+      }
+    }
+    return tiles;
+  }
+
   void startGame() {
-    grid = List.generate(gridSize, (_) => List<int?>.filled(gridSize, null));
+    grid = List.generate(gridSize, (_) => List<Map<String, dynamic>?>.filled(gridSize, null));
     score = 0;
+    _nextId = 0;
+    state = GameState.playing; // 🔰 ready to play
     addRandomTile();
     addRandomTile();
     addRandomTile();
   }
 
-  bool moveLeft() {
+  bool moveLeft({bool addTile = true}) {
     bool moved = false;
+    // didMerge = false;
 
     for (int i = 0; i < gridSize; i++) {
       // Step 1: Compress (push all non-null to the left)
-      List<int?> row = grid[i].where((v) => v != null).toList();
+      List<Map<String, dynamic>?> row = grid[i].where((v) => v != null).toList();
       while (row.length < gridSize) {
         row.add(null);
       }
@@ -49,50 +78,55 @@ class GameModel {
       // Step 2: Merge once — each tile merges at most once
       List<bool> merged = List.filled(gridSize, false);
       for (int j = 0; j < gridSize - 1; j++) {
-        if (row[j] != null && row[j] == row[j + 1] && !merged[j]) {
-          int val = row[j]! * 2;
+        if (row[j] != null && row[j + 1] != null &&
+          row[j]!['value'] == row[j + 1]!['value'] && !merged[j]) {
+          int val = row[j]!['value'] * 2;
           score += val;
-          row[j] = val;
+          row[j] = {'value': val, 'id': row[j]!['id']}; // 🔰 keep the LEFT tile's ID
           row[j + 1] = null;
           merged[j] = true; // 🔰 Mark as merged so it can't merge again
+          // didMerge = true; // 🔰 Mark that a merge occurred
         }
       }
 
       // Step 3: Compress again (fill gaps left by merging)
-      List<int?> newRow = row.where((v) => v != null).toList();
+      List<Map<String, dynamic>?> newRow = row.where((v) => v != null).toList();
       while (newRow.length < gridSize) {
         newRow.add(null);
       }
       // Check if the row actually changed
-      if (grid[i].join() != newRow.join()) moved = true;
+    if (grid[i].map((t) => t?['value']).join() != newRow.map((t) => t?['value']).join()) {
+      moved = true;
+    }
       grid[i] = newRow;
     }
 
-    if (moved) addRandomTile();
-    // if (score > bestScore) bestScore = score;
+    if (moved && addTile) {
+      addRandomTile();
+    }
     return moved;
   }
 
   // 🔰 RIGHT: reverse each row, moveLeft, reverse back
-  bool moveRight() {
+  bool moveRight({bool addTile = true}) {
     _reverseRows();
-    bool moved = moveLeft();
+    bool moved = moveLeft(addTile: addTile);
     _reverseRows();
     return moved;
   }
 
   // 🔰 UP: transpose, moveLeft, transpose back
-  bool moveUp() {
+  bool moveUp({bool addTile = true}) {
     _transpose();
-    bool moved = moveLeft();
+    bool moved = moveLeft(addTile: addTile);
     _transpose();
     return moved;
   }
 
   // 🔰 DOWN: transpose, moveRight (= reverse+moveLeft+reverse), transpose back
-  bool moveDown() {
+  bool moveDown({bool addTile = true}) {
     _transpose();
-    bool moved = moveRight();
+    bool moved = moveRight(addTile: addTile);
     _transpose();
     return moved;
   }
@@ -108,7 +142,7 @@ class GameModel {
   void _transpose() {
     for (int i = 0; i < gridSize; i++) {
       for (int j = i + 1; j < gridSize; j++) {
-        int? temp = grid[i][j];
+        var temp = grid[i][j];
         grid[i][j] = grid[j][i];
         grid[j][i] = temp;
       }
@@ -117,6 +151,7 @@ class GameModel {
 
   void addRandomTile() {
     print('Adding ONE new tile...');
+
     List<int> emptyIndices = [];
     for (int i = 0; i < gridSize * gridSize; i++) {
       int row = i ~/ gridSize;
@@ -127,24 +162,18 @@ class GameModel {
       int randomIndex = emptyIndices[Random().nextInt(emptyIndices.length)];
       int row = randomIndex ~/ gridSize;
       int col = randomIndex % gridSize;
-      grid[row][col] = (Random().nextDouble() < 0.9) ? 2 : 4; // New tiles are 90% 2's and 10% 4's
+      int tileValue = (Random().nextDouble() < 0.9) ? 2 : 4;
+      grid[row][col] = {'value': tileValue, 'id': _nextId++}; // 🔰 born with a stable ID    
     }
   }
 
   bool get gameOver {
-    // Check if full and no adjacent equals
-    bool full = true;
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (grid[i][j] == null) full = false;
-      }
-    }
+    bool full = grid.every((row) => row.every((cell) => cell != null));
     if (!full) return false;
-    
-    // Check adjacent
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize - 1; j++) {
-        if (grid[i][j] == grid[i][j + 1] || grid[j][i] == grid[j + 1][i]) return false;
+        if (grid[i][j]!['value'] == grid[i][j + 1]!['value']) return false;
+        if (grid[j][i]!['value'] == grid[j + 1][i]!['value']) return false;
       }
     }
     return true;
