@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:shared_preferences/shared_preferences.dart';
 // core game logic: swipe moves, tile sliding, merging, scoring, and new tiles.
 // Grid is a 4x4 box of empty spots (null). startGame() clears it and adds 2 random tiles (2 or 4).
 
@@ -11,6 +12,20 @@ class GameModel {
 
   GameModel() {
     startGame();
+  }
+
+  // 🔰 LOAD best score from device storage
+  Future<void> loadBestScore() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bestScore = prefs.getInt('bestScore') ?? 0;
+    print('📂 Loaded best score: $bestScore'); // if nothing saved yet, use 0
+  }
+
+  // 🔰 SAVE best score to device storage
+  Future<void> saveBestScore() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('bestScore', bestScore);
+    print('✅ Saved best score: $bestScore');
   }
 
   void startGame() {

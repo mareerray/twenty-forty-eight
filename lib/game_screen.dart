@@ -19,14 +19,18 @@ class GameScreen extends StatefulWidget {
     super.initState();
     gameModel = GameModel();
 
-    // Show dialog after first frame is rendered
+    // 🔰 Load saved best score and WAIT for it before showing anything
+    gameModel.loadBestScore().then((_) {
+      setState(() {}); // refresh UI with loaded score
+    // Show dialog after saved best score is loaded
     // using addPostFrameCallback ensures context is ready and the dialog can be shown safely.
     // we only show the dialog once, from initState via the post-frame callback
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_didShowWelcome) {
-        _didShowWelcome = true;
-        _showWelcomeDialog();
-      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_didShowWelcome) {
+          _didShowWelcome = true;
+          _showWelcomeDialog();
+        }
+      });
     });
   }
 
@@ -59,6 +63,7 @@ class GameScreen extends StatefulWidget {
 
     _isMoving = true;
 
+    // 🔰 Step 1: Make the move based on swipe direction
     if (dx.abs() > dy.abs()) {
       if (dx > 0) {
         gameModel.moveRight();
@@ -71,14 +76,14 @@ class GameScreen extends StatefulWidget {
       } else {
         gameModel.moveUp();
       }
-
-      // 🔰 Update best score and show game over ONLY when game ends
-      if (gameModel.gameOver) {
-        if (gameModel.score > gameModel.bestScore) {
-          gameModel.bestScore = gameModel.score; // 🔰 update best score on game over
-        }
-        _showGameOverDialog(); 
+    }
+    // 🔰 Step 2: ALWAYS check game over after ANY move direction
+    if (gameModel.gameOver) {
+      if (gameModel.score > gameModel.bestScore) {
+        gameModel.bestScore = gameModel.score; // 🔰 update best score on game over
+        await gameModel.saveBestScore(); // 🔰 Save to device when new best is set!
       }
+      _showGameOverDialog(); 
     }
 
     setState(() {});
@@ -214,21 +219,33 @@ class GameScreen extends StatefulWidget {
                 ]
               ),
               // Restart icon button
-              Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: IconButton(
-                  onPressed: () {
-                    gameModel.startGame();
-                    setState(() {});
-                  },
-                  icon: const Icon(Icons.refresh, color: Colors.white),
-                  iconSize: 32,
-                  tooltip: 'Restart', // shows a label on long press
-                ),
-              ),
+              Column(
+                children: [
+                  Text(
+                    'REPLAY',
+                    style: GoogleFonts.figtree(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF6f7b5a),
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: IconButton(
+                      onPressed: () {
+                        gameModel.startGame();
+                        setState(() {});
+                      },
+                      icon: const Icon(Icons.replay_circle_filled, color: Color(0xFF6f7b5a)),
+                      iconSize: 38,
+                      tooltip: 'Restart',
+                    ),
+                  ),
+                ],
+              ),              
               Column(
                 children: [
                   Text('𓆩♕𓆪', style: GoogleFonts.figtree(fontSize: 20, fontWeight: FontWeight.bold)), 
@@ -253,17 +270,18 @@ class GameScreen extends StatefulWidget {
               onPanEnd: _handleSwipe, // use the extracted method from before
               child: Column(
                 children: [
-
+              
                   // ── Grid (square) ──────────────────────────────
                   AspectRatio(
                     aspectRatio: 1.0,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.grey[300],
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha:0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: GridView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(8),
+                        physics: const NeverScrollableScrollPhysics(), // disable scrolling
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 4,
                           crossAxisSpacing: 4,
@@ -294,16 +312,16 @@ class GameScreen extends StatefulWidget {
                       ),
                     ),
                   ),
-
-                  const SizedBox(height: 12),
-
+              
+                  const SizedBox(height: 5),
+              
                   // ── Swipe Pad ──────────────────────────────────
                   Container(
                     width: double.infinity,
-                    height: 130,
+                    height: 165,
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primary.withValues(alpha:0.15),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: Theme.of(context).colorScheme.primary.withValues(alpha:0.3),
                         width: 1.5,
