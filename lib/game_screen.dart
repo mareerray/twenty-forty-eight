@@ -81,7 +81,14 @@ class GameScreen extends StatefulWidget {
       (row) => row.any((cell) => cell?['value'] == 2048)
     );
     // 🔰 Play win sound if 2048 tile is on the board (even if game continues)
-    if (hasWon) _audio.playWin();
+    if (hasWon) {
+      if (gameModel.score > gameModel.bestScore) {
+        gameModel.bestScore = gameModel.score;
+        await gameModel.saveBestScore();
+      }
+      await _audio.playWin();  // 🔰 sound first
+      _showWinDialog();         // 🔰 then dialog
+    }
 
     // ── Phase 3: CHECK GAME OVER ─────────────────
     if (gameModel.gameOver) {
@@ -155,6 +162,56 @@ class GameScreen extends StatefulWidget {
               child: Text('Let\'s play!',
                 style: GoogleFonts.figtree(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)
               ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  // =============== Show win dialog ================================
+  void _showWinDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('You Win! 🎉',
+              style: GoogleFonts.tiltPrism(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary)),
+          content: Text(
+            '𓆩✧𓆪 You reached 2048!\n𓆩♕𓆪 Score: ${gameModel.score}',
+            style: GoogleFonts.figtree(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          actions: [
+            // 🔰 Keep playing — just close the dialog
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Keep Playing',
+                  style: GoogleFonts.figtree(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
+            // 🔰 Start fresh
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                gameModel.startGame();
+                _audio.playBgMusic();
+                setState(() {});
+              },
+              child: Text('New Game',
+                  style: GoogleFonts.figtree(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
             ),
           ],
         );

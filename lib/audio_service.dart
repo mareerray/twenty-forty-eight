@@ -17,7 +17,7 @@ class AudioService {
   Future<void> playBgMusic() async {
     if (isMuted) return; // 🔰 do nothing if muted
     await _bgPlayer.setReleaseMode(ReleaseMode.loop);
-    await _bgPlayer.play(AssetSource('audio/bg_music.mp3'));
+    await _bgPlayer.play(AssetSource('audio/bg_theme.mp3'));
   }
 
   Future<void> stopBgMusic() async {

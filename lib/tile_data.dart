@@ -23,7 +23,12 @@ Color getTileColor(int value) {
     case 512: return const Color(0xFF880e4f);
     case 1024: return const Color(0xFFad1457);
     case 2048: return const Color(0xFFc2185b);
-    default: return const Color(0xFFCCCCCC);
-    // #5d4a7d, #6a7d4a, #764a7d, #4a517d
+    // 🔰 Beyond 2048 — getting rarer and more golden/bright
+    case 4096: return const Color(0xFFe91e63);
+    case 8192: return const Color(0xFFff5722);
+    case 16384: return const Color(0xFFff9800);
+    case 32768: return const Color(0xFFffc107);
+    case 65536: return const Color(0xFFffeb3b);
+    default: return const Color(0xFFCCCCCC); // fallback for anything unexpected  
   }
 }
