@@ -2,17 +2,20 @@ import 'package:audioplayers/audioplayers.dart';
 
 class AudioService {
   final AudioPlayer _bgPlayer = AudioPlayer();
-  // AudioPool? _mergePool; // 🔰 pool pre-loads the sound, ready to fire instantly
+  bool isMuted = false; // 🔰 mute state
 
-  // // 🔰 Call this once when the game starts
-  // Future<void> init() async {
-  //   _mergePool = await AudioPool.createFromAsset(
-  //     path: 'audio/merge.mp3',
-  //     maxPlayers: 4, // 🔰 up to 4 overlapping merge sounds at once
-  //   );
-  // }
+  void toggleMute() {
+    isMuted = !isMuted;
+    if (isMuted) {
+      _bgPlayer.stop(); // 🔰 stop music immediately when muted
+    } else {
+      playBgMusic(); // 🔰 resume music when unmuted
+    }
+  }
+
 
   Future<void> playBgMusic() async {
+    if (isMuted) return; // 🔰 do nothing if muted
     await _bgPlayer.setReleaseMode(ReleaseMode.loop);
     await _bgPlayer.play(AssetSource('audio/bg_music.mp3'));
   }
@@ -21,23 +24,20 @@ class AudioService {
     await _bgPlayer.stop();
   }
 
-  // Future<void> playMerge() async {
-  //   await _mergePool?.start(); // 🔰 fires instantly, no lag
-  // }
-
   Future<void> playWin() async {
+    if (isMuted) return; // 🔰 do nothing if muted
     await _bgPlayer.stop();
     await AudioPlayer().play(AssetSource('audio/win.wav'));
   }
 
   Future<void> playGameOver() async {
+    if (isMuted) return; // 🔰 do nothing if muted
     await _bgPlayer.stop();
     await AudioPlayer().play(AssetSource('audio/gameover.wav'));
   }
 
   void dispose() {
     _bgPlayer.dispose();
-    // _mergePool?.dispose();
   }
 }
 

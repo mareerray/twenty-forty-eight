@@ -8,7 +8,6 @@ class GameModel {
   static const int gridSize = 4;
   GameState state = GameState.idle; // 🔰 starts idle
 
-  // Replace grid type — now stores maps with value AND id
   List<List<Map<String, dynamic>?>> grid = List.generate(
     gridSize, (_) => List<Map<String, dynamic>?>.filled(gridSize, null)
   );
@@ -17,7 +16,6 @@ class GameModel {
   
   int score = 0;
   int bestScore = 0;
-  // bool didMerge = false; // 🔰 track if a merge happened during the last move
 
   GameModel() {
     startGame();
@@ -85,7 +83,6 @@ class GameModel {
           row[j] = {'value': val, 'id': row[j]!['id']}; // 🔰 keep the LEFT tile's ID
           row[j + 1] = null;
           merged[j] = true; // 🔰 Mark as merged so it can't merge again
-          // didMerge = true; // 🔰 Mark that a merge occurred
         }
       }
 

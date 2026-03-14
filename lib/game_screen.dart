@@ -21,7 +21,6 @@ class GameScreen extends StatefulWidget {
   @override
   void initState() {
     super.initState();
-    // _audio.init(); // 🔰 prepare audio assets
     gameModel = GameModel();
 
     // 🔰 Load saved best score and WAIT for it before showing anything
@@ -70,9 +69,6 @@ class GameScreen extends StatefulWidget {
       gameModel.state = GameState.playing; // nothing moved, go back
       return;
     }
-
-    // // 🔰 Play merge sound if tiles collided during the slide
-    // if (gameModel.didMerge) _audio.playMerge();
 
     // ── Phase 2: SPAWNING ────────────────────────
     gameModel.state = GameState.spawning;
@@ -226,6 +222,21 @@ class GameScreen extends StatefulWidget {
               style: GoogleFonts.tiltPrism(color: Colors.white, fontSize: 38, fontWeight: FontWeight.bold)),
           ],
         ),
+        actions: [
+          // 🔰 Mute/unmute button in the top right corner
+          IconButton(
+            icon: Icon(
+              _audio.isMuted ? Icons.volume_off : Icons.volume_up,
+              color: Colors.white,
+            ),
+            onPressed: () {
+              setState(() {
+                _audio.toggleMute(); // 🔰 setState so icon switches instantly
+              });
+            },
+            tooltip: _audio.isMuted ? 'Unmute' : 'Mute',
+          ),
+        ],
       ),
 
       // ── HUD: score & best score ──────────────────────────────
