@@ -42,7 +42,7 @@ class GameModel {
             'value': grid[r][c]!['value'], 
             'id': grid[r][c]!['id'],   // 🔰 pass the stable ID through
             'row': r, 
-            'col': c
+            'col': c,'isMerged': grid[r][c]!['isMerged'] ?? false,
           });
         }
       }
@@ -78,7 +78,7 @@ class GameModel {
           row[j]!['value'] == row[j + 1]!['value'] && !merged[j]) {
           int val = row[j]!['value'] * 2;
           score += val;
-          row[j] = {'value': val, 'id': row[j]!['id']}; // 🔰 keep the LEFT tile's ID
+          row[j] = {'value': val, 'id': row[j]!['id'],'isMerged': true}; // 🔰 keep the LEFT tile's ID
           row[j + 1] = null;
           merged[j] = true; // 🔰 Mark as merged so it can't merge again in the same swipe
         }

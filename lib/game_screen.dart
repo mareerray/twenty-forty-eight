@@ -81,9 +81,17 @@ class _GameScreenState extends State<GameScreen> with GameDialogs {
     setState(() {}); // new tile appears
     await Future.delayed(const Duration(milliseconds: 150)); // wait for pop-in
 
+    // 🔰 Reset isMerged so the pop animation doesn't repeat
+    for (var row in _gameModel.grid) {
+      for (var cell in row) {
+        if (cell != null) cell.remove('isMerged');
+      }
+    }
+    setState(() {}); // 🔰 scale goes back to 1.0
+
     // Check if player just hit 2048
     bool hasWon = gameModel.grid.any(
-      (row) => row.any((cell) => cell?['value'] == 256) // DEBUG: check for 2048 tile
+      (row) => row.any((cell) => cell?['value'] == 2048) 
     );
     // 🔰 Play win sound if 2048 tile is on the board (even if game continues)
     if (hasWon && !_didShowWin) {

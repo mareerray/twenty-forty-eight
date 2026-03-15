@@ -143,18 +143,23 @@ class GameUI extends StatelessWidget {
                                     top: padding + tile['row'] * (cellSize + gap),
                                     width: cellSize,
                                     height: cellSize,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: getTileColor(tile['value']),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          tile['value'].toString(),
-                                          style: GoogleFonts.figtree(
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white),
+                                    child: AnimatedScale(
+                                      scale: tile['isMerged'] ? 1.1 : 1.0, // 🔰 pop animation for merged tile
+                                      duration: const Duration(milliseconds: 150),
+                                      curve: Curves.easeOutBack,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: getTileColor(tile['value']),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            tile['value'].toString(),
+                                            style: GoogleFonts.figtree(
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white),
+                                          ),
                                         ),
                                       ),
                                     ),
