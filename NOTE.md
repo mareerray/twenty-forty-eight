@@ -9,11 +9,26 @@
 | loadBestScore() | | |
 | gameOver | | |
 
+```dart
+lib/
+├── main.dart                        ← App entry point, theme setup
+├── game_screen.dart                 ← Main screen: state, swipe logic, game lifecycle
+├── game_model.dart                  ← Game data: grid, score, move logic, best score
+├── game_state.dart                  ← Enum: playing, moving, addingTile, gameOver
+├── services/
+│   └── audio_service.dart           ← Background music, sound effects, mute toggle
+└── widgets/
+    ├── tile_data.dart               ← Tile colors mapped to each tile value
+    ├── game_ui.dart                 ← Full UI: AppBar, HUD, grid, swipe pad
+    └── game_dialogs.dart            ← Welcome, win, and game over dialogs (mixin)
+```
+
+
 //-------------------- GAME LIFECYCLE -----------------------------
 
 swipe →  [moving]   → tiles slide → wait 150ms
                     → didMerge? → 💥 merge sound
-       →  [spawning] → new tile appears
+       →  [addingTile] → new tile appears
                     → hit 2048? → 🏆 win sound
                     → wait 150ms
        →  [gameOver]? → 💀 gameover sound → dialog

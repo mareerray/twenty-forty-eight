@@ -13,7 +13,6 @@ class AudioService {
     }
   }
 
-
   Future<void> playBgMusic() async {
     if (isMuted) return; // 🔰 do nothing if muted
     await _bgPlayer.setReleaseMode(ReleaseMode.loop);

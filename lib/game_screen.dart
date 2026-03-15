@@ -1,27 +1,33 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'audio_service.dart';
+import 'services/audio_service.dart';
 import 'game_model.dart';
-import 'tile_data.dart';
+import 'widgets/game_ui.dart';
+import 'widgets/game_dialogs.dart';
 import 'game_state.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
 
   @override
-    State<GameScreen> createState() => _GameScreenState();
-  }
+  State<GameScreen> createState() => _GameScreenState();
+}
 
-  class _GameScreenState extends State<GameScreen> {
-    final AudioService _audio = AudioService();
+class _GameScreenState extends State<GameScreen> with GameDialogs {
+  final AudioService _audio = AudioService();
+  late GameModel _gameModel;
+  bool _didShowWelcome = false;
+  bool _didShowWin = false; 
 
-    late GameModel gameModel;
-    bool _didShowWelcome = false;
+  @override
+  GameModel get gameModel => _gameModel;  
+
+  @override
+  AudioService get audio => _audio;
 
   @override
   void initState() {
     super.initState();
-    gameModel = GameModel();
+    _gameModel = GameModel();
 
     // 🔰 Load saved best score and WAIT for it before showing anything
     gameModel.loadBestScore().then((_) {
@@ -32,7 +38,7 @@ class GameScreen extends StatefulWidget {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_didShowWelcome) {
           _didShowWelcome = true;
-          _showWelcomeDialog();
+          showWelcomeDialog();
         }
       });
     });
@@ -40,7 +46,6 @@ class GameScreen extends StatefulWidget {
 
   // ============ Swipe handler — Also handling Game State ====================
   void _handleSwipe(DragEndDetails details) async {
-    // 🔰 Only accept swipes when actually playing
     if (gameModel.state != GameState.playing) return;
 
     double dx = details.velocity.pixelsPerSecond.dx;
@@ -70,24 +75,25 @@ class GameScreen extends StatefulWidget {
       return;
     }
 
-    // ── Phase 2: SPAWNING ────────────────────────
-    gameModel.state = GameState.spawning;
+    // ── Phase 2: addingTile ────────────────────────
+    gameModel.state = GameState.addingTile;
     gameModel.addRandomTile();
     setState(() {}); // new tile appears
     await Future.delayed(const Duration(milliseconds: 150)); // wait for pop-in
 
     // Check if player just hit 2048
     bool hasWon = gameModel.grid.any(
-      (row) => row.any((cell) => cell?['value'] == 2048)
+      (row) => row.any((cell) => cell?['value'] == 256) // DEBUG: check for 2048 tile
     );
     // 🔰 Play win sound if 2048 tile is on the board (even if game continues)
-    if (hasWon) {
+    if (hasWon && !_didShowWin) {
+      _didShowWin = true;
       if (gameModel.score > gameModel.bestScore) {
         gameModel.bestScore = gameModel.score;
         await gameModel.saveBestScore();
       }
       await _audio.playWin();  // 🔰 sound first
-      _showWinDialog();         // 🔰 then dialog
+      showWinDialog();         // 🔰 then dialog
     }
 
     // ── Phase 3: CHECK GAME OVER ─────────────────
@@ -99,162 +105,13 @@ class GameScreen extends StatefulWidget {
         gameModel.bestScore = gameModel.score;
         await gameModel.saveBestScore();
       }
-      _showGameOverDialog();
+      showGameOverDialog();
       return;
     }
 
     // ── Phase 4: Back to PLAYING ─────────────────
     gameModel.state = GameState.playing;
     setState(() {});
-  }
-
-
-  // ============= Show welcome dialog on first load ====================
-  void _showWelcomeDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // user must tap the button
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Welcome to 2048', style: GoogleFonts.tiltPrism(fontSize: 22, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Goal:\n'
-                  'Combine tiles to reach 2048 .\n',
-                  style: GoogleFonts.figtree(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyMedium?.color),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'How to play:\n'
-                  '• Swipe up, down, left or right.\n'
-                  '• All tiles move in that direction.\n'
-                  '• Same numbers that touch will merge.\n'
-                  '• After each move, a new tile (2 or 4) appears.\n',
-                  style: GoogleFonts.figtree(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyMedium?.color),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Game over:\n'
-                  'No empty spaces and no merges left.\n',
-                  style: GoogleFonts.figtree(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyMedium?.color),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop(); // close dialog
-                gameModel.startGame();
-                _audio.playBgMusic(); // 🔰 music starts
-                setState(() {});
-              },
-              child: Text('Let\'s play!',
-                style: GoogleFonts.figtree(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-  
-  // =============== Show win dialog ================================
-  void _showWinDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('You Win! 🎉',
-              style: GoogleFonts.tiltPrism(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary)),
-          content: Text(
-            '𓆩✧𓆪 You reached 2048!\n𓆩♕𓆪 Score: ${gameModel.score}',
-            style: GoogleFonts.figtree(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          actions: [
-            // 🔰 Keep playing — just close the dialog
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Keep Playing',
-                  style: GoogleFonts.figtree(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-            ),
-            // 🔰 Start fresh
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                gameModel.startGame();
-                _audio.playBgMusic();
-                setState(() {});
-              },
-              child: Text('New Game',
-                  style: GoogleFonts.figtree(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // =============== Show game over dialog ============================
-  void _showGameOverDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Game Over!',
-              style: GoogleFonts.tiltPrism(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary)),
-          content: Text(
-            ' 𓆩✧𓆪 Your score: ${gameModel.score}\n 𓆩♕𓆪 Best score: ${gameModel.bestScore}',
-            style: GoogleFonts.figtree(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                gameModel.startGame();
-                _audio.playBgMusic(); // 🔰 music restarts
-                setState(() {});
-              },
-              child: Text('Play Again',
-                  style: GoogleFonts.figtree(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -267,221 +124,21 @@ class GameScreen extends StatefulWidget {
   // ================= BUILD UI ===========================
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // ── AppBar with title and icon ──────────────────────────────
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        title: Row(
-          children: [
-            Icon(Icons.grid_on_outlined, color: Colors.white, size: 30),
-            SizedBox(width: 8),
-            Text('2048 Game', 
-              style: GoogleFonts.tiltPrism(color: Colors.white, fontSize: 38, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        actions: [
-          // 🔰 Mute/unmute button in the top right corner
-          IconButton(
-            icon: Icon(
-              _audio.isMuted ? Icons.volume_off : Icons.volume_up,
-              color: Colors.white,
-            ),
-            onPressed: () {
-              setState(() {
-                _audio.toggleMute(); // 🔰 setState so icon switches instantly
-              });
-            },
-            tooltip: _audio.isMuted ? 'Unmute' : 'Mute',
-          ),
-        ],
-      ),
-
-      // ── HUD: score & best score ──────────────────────────────
-      body: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Column(
-                children: [
-                  Text('𓆩✧𓆪', style: GoogleFonts.figtree(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)), 
-                  Text(gameModel.score.toString(), style: GoogleFonts.figtree(fontSize: 20, fontWeight: FontWeight.bold))
-                ]
-              ),
-              // Restart icon button
-              Column(
-                children: [
-                  Text(
-                    'REPLAY',
-                    style: GoogleFonts.figtree(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF6f7b5a),
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: IconButton(
-                      onPressed: () {
-                        gameModel.startGame();
-                        _audio.playBgMusic(); // 🔰 music restarts
-                        setState(() {});
-                      },
-                      icon: const Icon(Icons.replay_circle_filled, color: Color(0xFF6f7b5a)),
-                      iconSize: 38,
-                      tooltip: 'Replay Game',
-                    ),
-                  ),
-                ],
-              ),              
-              Column(
-                children: [
-                  Text('𓆩♕𓆪', style: GoogleFonts.figtree(fontSize: 20, fontWeight: FontWeight.bold)), 
-                  Text(gameModel.bestScore.toString(), style: GoogleFonts.figtree(fontSize: 20, fontWeight: FontWeight.bold))
-                ]
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 20),
-          
-          // ── Game container ──────────────────────────────
-          ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 400,
-              maxHeight: 500,
-            ),
-
-            // ── The grid container ──────────────────────────────
-            // One GestureDetector covers BOTH grid and swipe pad
-            child: GestureDetector(
-              onPanEnd: _handleSwipe, // use the extracted method from before
-              child: Column(
-                children: [
-              
-                  // ── Grid (square) ──────────────────────────────
-                  AspectRatio(
-                    aspectRatio: 1.0,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        double size = constraints.maxWidth;
-                        double padding = 8.0;
-                        double gap = 4.0;
-                        double cellSize = (size - padding * 2 - gap * 3) / 4;
-
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Stack(
-                            children: [
-                              // 🔰 Background empty cells (always visible)
-                              for (int r = 0; r < 4; r++)
-                                for (int c = 0; c < 4; c++)
-                                  Positioned(
-                                    left: padding + c * (cellSize + gap),
-                                    top: padding + r * (cellSize + gap),
-                                    width: cellSize,
-                                    height: cellSize,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[200],
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ),
-                                  ),
-
-                              // 🔰 Animated tiles on top
-                              for (var tile in gameModel.getTiles())
-                                AnimatedPositioned(
-                                  key: ValueKey(tile['id']), // 🔰 use the stable ID for the key
-                                  duration: const Duration(milliseconds: 500),
-                                  curve: Curves.easeInOut,
-                                  left: padding + tile['col'] * (cellSize + gap),
-                                  top: padding + tile['row'] * (cellSize + gap),
-                                  width: cellSize,
-                                  height: cellSize,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: getTileColor(tile['value']),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        tile['value'].toString(),
-                                        style: GoogleFonts.figtree(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              
-                  const SizedBox(height: 5),
-              
-                  // ── Swipe Pad ──────────────────────────────────
-                  Container(
-                    width: double.infinity,
-                    height: 165,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha:0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha:0.3),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.keyboard_arrow_up_rounded,
-                            size: 32, color: Theme.of(context).colorScheme.primary),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.keyboard_arrow_left_rounded,
-                                size: 32, color: Theme.of(context).colorScheme.primary),
-                            const SizedBox(width: 12),
-                            Text(
-                              'SWIPE',
-                              style: GoogleFonts.figtree(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary.withValues(alpha:0.6),
-                                letterSpacing: 2,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Icon(Icons.keyboard_arrow_right_rounded,
-                                size: 32, color: Theme.of(context).colorScheme.primary),
-                          ],
-                        ),
-                        Icon(Icons.keyboard_arrow_down_rounded,
-                            size: 32, color: Theme.of(context).colorScheme.primary),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),            
-          ),
-        ],
-      ),
-    ),
-  );
+    return GameUI(
+      gameModel: gameModel,
+      audio: _audio,
+      onSwipe: _handleSwipe,
+      onMuteToggle: () {
+        setState(() {
+          _audio.toggleMute();
+        });
+      },
+      onReplay: () {
+        gameModel.startGame();
+        _audio.playBgMusic();
+        _didShowWin = false; 
+        setState(() {});
+      },
+    );
   }
 }

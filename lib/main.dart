@@ -20,8 +20,8 @@ class MyApp extends StatelessWidget {
           secondary: const Color(0xFF673AB7),
         ),
         textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: Color(0xFF6f7b5a)), // Green text
-          titleLarge: TextStyle(color: Color(0xFF673AB7)), // Headers purple
+          bodyMedium: TextStyle(color: Color(0xFF6f7b5a)), 
+          titleLarge: TextStyle(color: Color(0xFF673AB7)), 
         ),
         useMaterial3: true,
       ),

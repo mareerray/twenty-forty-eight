@@ -1,8 +1,6 @@
 import 'dart:math';
 import 'game_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-// core game logic: swipe moves, tile sliding, merging, scoring, and new tiles.
-// Grid is a 4x4 box of empty spots (null). startGame() clears it and adds 2 random tiles (2 or 4).
 
 class GameModel {
   static const int gridSize = 4;
@@ -25,14 +23,14 @@ class GameModel {
   Future<void> loadBestScore() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bestScore = prefs.getInt('bestScore') ?? 0;
-    print('📂 Loaded best score: $bestScore'); // if nothing saved yet, use 0
+    // print('📂 Loaded best score: $bestScore'); // if nothing saved yet, use 0
   }
 
   // 🔰 SAVE best score to device storage
   Future<void> saveBestScore() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('bestScore', bestScore);
-    print('✅ Saved best score: $bestScore');
+    // print('✅ Saved best score: $bestScore');
   }
 
   List<Map<String, dynamic>> getTiles() {
@@ -82,7 +80,7 @@ class GameModel {
           score += val;
           row[j] = {'value': val, 'id': row[j]!['id']}; // 🔰 keep the LEFT tile's ID
           row[j + 1] = null;
-          merged[j] = true; // 🔰 Mark as merged so it can't merge again
+          merged[j] = true; // 🔰 Mark as merged so it can't merge again in the same swipe
         }
       }
 
@@ -147,7 +145,7 @@ class GameModel {
   }
 
   void addRandomTile() {
-    print('Adding ONE new tile...');
+    // print('Adding ONE new tile...');
 
     List<int> emptyIndices = [];
     for (int i = 0; i < gridSize * gridSize; i++) {
