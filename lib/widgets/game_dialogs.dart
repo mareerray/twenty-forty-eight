@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:twenty_forty_eight/game_screen.dart';
 import '../services/audio_service.dart';
 import '../game_model.dart';
+import '../game_screen.dart';
 
 mixin GameDialogs on State<GameScreen> {
   GameModel get gameModel;
   AudioService get audio;
+  void restartGame();
 
   // ============= Show welcome dialog on first load ====================
   void showWelcomeDialog() {
@@ -63,9 +64,7 @@ mixin GameDialogs on State<GameScreen> {
               ),
               onPressed: () {
                 Navigator.of(context).pop();
-                gameModel.startGame();
-                audio.playBgMusic();
-                setState(() {});
+                restartGame();
               },
               child: Text("Let's play!",
                 style: GoogleFonts.figtree(
@@ -114,9 +113,7 @@ mixin GameDialogs on State<GameScreen> {
               ),
               onPressed: () {
                 Navigator.of(context).pop();
-                gameModel.startGame();
-                audio.playBgMusic();
-                setState(() {});
+                restartGame();
               },
               child: Text('New Game',
                 style: GoogleFonts.figtree(
@@ -155,9 +152,7 @@ mixin GameDialogs on State<GameScreen> {
               ),
               onPressed: () {
                 Navigator.of(context).pop();
-                gameModel.startGame();
-                audio.playBgMusic();
-                setState(() {});
+                restartGame();
               },
               child: Text('Play Again',
                 style: GoogleFonts.figtree(

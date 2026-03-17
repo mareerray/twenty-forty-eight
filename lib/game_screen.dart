@@ -122,6 +122,16 @@ class _GameScreenState extends State<GameScreen> with GameDialogs {
     setState(() {});
   }
 
+  // ============ Restart game ====================
+
+  void restartGame() {
+    setState(() {
+      gameModel.startGame(); // Resets grid, score, and sets state to 'playing'
+      _audio.playBgMusic();  // Ensures background music starts over
+      _didShowWin = false;  // Resets the flag so the win dialog can show again
+    });
+  }
+
   @override
   void dispose() {
     _audio.dispose(); // 🔰 clean up players
@@ -142,10 +152,7 @@ class _GameScreenState extends State<GameScreen> with GameDialogs {
         });
       },
       onReplay: () {
-        gameModel.startGame();
-        _audio.playBgMusic();
-        _didShowWin = false; 
-        setState(() {});
+        restartGame();
       },
     );
   }
