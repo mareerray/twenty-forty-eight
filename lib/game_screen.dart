@@ -123,7 +123,7 @@ class _GameScreenState extends State<GameScreen> with GameDialogs {
   }
 
   // ============ Restart game ====================
-
+  @override
   void restartGame() {
     setState(() {
       gameModel.startGame(); // Resets grid, score, and sets state to 'playing'

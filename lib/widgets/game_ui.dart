@@ -137,7 +137,7 @@ class GameUI extends StatelessWidget {
                                 for (var tile in gameModel.getTiles())
                                   AnimatedPositioned(
                                     key: ValueKey(tile['id']),
-                                    duration: const Duration(milliseconds: 500),
+                                    duration: const Duration(milliseconds: 150),
                                     curve: Curves.easeInOut,
                                     left: padding + tile['col'] * (cellSize + gap),
                                     top: padding + tile['row'] * (cellSize + gap),
