@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/audio_service.dart';
 import '../game_model.dart';
 import 'tile_data.dart';
@@ -19,6 +21,13 @@ class GameUI extends StatelessWidget {
     required this.onMuteToggle,
     required this.onReplay,
   });
+
+  Future<void> _openLink(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      throw Exception('Could not launch $url');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +53,7 @@ class GameUI extends StatelessWidget {
           ),
         ],
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -89,7 +99,7 @@ class GameUI extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
             // ── Game container ──
             ConstrainedBox(
@@ -171,12 +181,12 @@ class GameUI extends StatelessWidget {
                       ),
                     ),
 
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 10),
 
                     // ── Swipe Pad ──
                     Container(
                       width: double.infinity,
-                      height: 165,
+                      height: 160,
                       decoration: BoxDecoration(
                         color: Theme.of(context)
                             .colorScheme
@@ -230,6 +240,55 @@ class GameUI extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+
+      bottomNavigationBar: Container(
+        // color: Colors.black.withValues(alpha: 0.92),
+        // color: Theme.of(context).colorScheme.primary,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: SafeArea(
+          top: false,
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              Text(
+                '© 2026 Mayuree Reunsati',
+                style: GoogleFonts.poppins(
+                  color: Color(0xFF6f7b5a),
+                  fontSize: 14,
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () => _openLink('https://github.com/mareerray'),
+                    child: const FaIcon(
+                      FontAwesomeIcons.github,
+                      color: Color(0xFF6f7b5a),
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: () => _openLink(
+                      'https://www.linkedin.com/in/mayuree-reunsati',
+                    ),
+                    child: const FaIcon(
+                      FontAwesomeIcons.linkedin,
+                      // color: Colors.white,
+                      color: Color(0xFF6f7b5a),
+                      size: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
